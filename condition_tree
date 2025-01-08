@@ -1,0 +1,41 @@
+# Function to prepare config for condition_tree
+def prepare_config(selected_columns):
+    config_dict = {}
+    for col in selected_columns:
+        try:
+            # Check if the column is listed
+            listed_value = df.loc[df["Datamart Columns"] == col, "Listed"].values[0]
+        except KeyError:
+            st.error("'Listed' column not found in the CSV file.")
+            return None  # Return None if the column is missing
+        except IndexError:
+            st.warning(f"No entry for column '{col}' in the 'Listed' column.")
+            listed_value = "No"
+
+        if listed_value.lower() == "yes":
+            # Fetch unique values for dropdown
+            unique_values = get_unique_values("configdata", col)
+            config_dict[col] = {"type": "dropdown", "options": unique_values}
+        else:
+            # Provide an empty text input field
+            config_dict[col] = {"type": "text", "placeholder": f"Enter value for {col}"}
+    return config_dict
+
+# Main logic for condition_tree
+try:
+    # Prepare config for the selected columns
+    config = prepare_config(selected_columns)
+
+    if config:
+        # Pass config to condition_tree only if it is valid
+        condition_tree_query = condition_tree(
+            config,
+            return_type="sql",
+            always_show_buttons=True,
+            placeholder="Add Filters",
+        )
+        st.write("Generated SQL Query:", condition_tree_query)
+    else:
+        st.warning("Configuration is empty. Please select valid columns.")
+except Exception as e:
+    st.error(f"An error occurred: {e}")
