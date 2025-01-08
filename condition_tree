@@ -1,6 +1,7 @@
 import pandas as pd
 import streamlit as st
 from streamlit_antd_components import condition_tree
+from streamlit_antd_components import config_from_dataframe  # Import required function
 
 # Sample DataFrame (replace this with actual data from Snowflake or CSV)
 df = pd.DataFrame({
@@ -16,23 +17,30 @@ no_columns = ['Price']  # These columns will show a text input
 # Step 1: Select columns for filtering
 filter_columns = st.multiselect("Select Filters", df.columns)
 
-# Step 2: Prepare condition tree configuration
+# Step 2: Prepare condition tree configuration (config_data)
 config_data = []
+
 for column in filter_columns:
     if column in yes_columns:  # If the column should show a dropdown
         config_data.append({
-            'column': column,
-            'filter_type': 'dropdown'
+            'label': column,
+            'type': 'select',  # Dropdown for these columns
+            'fieldSettings': {
+                'listValues': df[column].dropna().unique().tolist()  # Automatically fill dropdown with unique values
+            }
         })
     elif column in no_columns:  # If the column should show a text input
         config_data.append({
-            'column': column,
-            'filter_type': 'text'
+            'label': column,
+            'type': 'text',  # Text input for these columns
+            'mainWidgetProps': {
+                'valuePlaceholder': 'Enter value'
+            }
         })
 
-# Step 3: Generate condition tree and SQL query
+# Step 3: Use config_data to generate the condition tree
 condition_tree_query = condition_tree(
-    config=config_data,
+    config=config_data,  # Using config_data here
     return_type='sql',
     placeholder="Add Filters",
     always_show_buttons=True
