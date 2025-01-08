@@ -1,72 +1,88 @@
 import streamlit as st
 import pandas as pd
 import snowflake.connector
-from streamlit_condition_tree import condition_tree, config_from_dataframe
+from streamlit_condition_tree import condition_tree
+from streamlit_antd_components import TreeItem
 
-# Load the CSV file
-csv_file = "OBI Trades View Source Mapping.xlsx"
-df = pd.read_excel(csv_file)
+def preview_filtered_data(selected_table):
+    sql_query = ""
 
-# Snowflake connection (replace with your credentials)
-conn = snowflake.connector.connect(
-    user="your_user",
-    password="your_password",
-    account="your_account",
-    warehouse="your_warehouse",
-    database="your_database",
-    schema="your_schema",
-)
-
-# Function to fetch unique values from Snowflake for a column
-def get_unique_values(selected_table, column_name):
-    query = f"SELECT DISTINCT {column_name} FROM {selected_table} LIMIT 1000"
-    try:
-        unique_df = pd.read_sql(query, conn)
-        return unique_df[column_name].dropna().unique().tolist()
-    except Exception as e:
-        st.warning(f"Error fetching unique values: {str(e)}")
-        return []
-
-# Prepare the configuration for Condition Tree
-def prepare_config(selected_columns):
-    config_dict = {}
-    for col in selected_columns:
-        # Check if the column is listed
-        listed_value = df.loc[df["Datamart Columns"] == col, "Listed"].values[0]
-        if listed_value.lower() == "yes":
-            # Fetch unique values for dropdown
-            unique_values = get_unique_values("configdata", col)
-            config_dict[col] = {"type": "dropdown", "options": unique_values}
-        else:
-            # Provide an empty text input field
-            config_dict[col] = {"type": "text", "placeholder": f"Enter value for {col}"}
-    return config_dict
-
-# Sidebar for category and datamart columns
-categories = df.groupby("Category")["Datamart Columns"].apply(list).to_dict()
-with st.sidebar:
-    category_tree_items = [
-        sac.TreeItem(category, children=[sac.TreeItem(column) for column in columns])
-        for category, columns in categories.items()
-    ]
-    selected_columns = sac.tree(
-        items=category_tree_items,
-        label="Select Features",
-        open_all=False,
-        checkbox=True,
+    # Connect to Snowflake
+    conn = snowflake.connector.connect(
+        user=
     )
 
-# Display Condition Tree if columns are selected
-if selected_columns:
-    st.subheader("Add Filters")
-    # Prepare config based on the selected columns
-    config = prepare_config(selected_columns)
-    # Generate condition tree query
+    # Query Snowflake
+    sql_query = f"SELECT * FROM OBI.MISDBO.{selected_table} LIMIT 25"
+    df = pd.read_sql(sql_query, conn)
+
+    # Convert columns to categorical for unique values
+    for col in df.columns:
+        df[col] = pd.Categorical(df[col])
+
+    # Sidebar: Load CSV file
+    with st.sidebar:
+        csv_file = "C:/Users/choudhta/streamlit/Source_mapping.csv"
+        source_df = pd.read_csv(csv_file)
+
+        # Group by categories
+        categories = (
+            source_df.groupby("Category")["Datamart Columns"]
+            .apply(list)
+            .to_dict()
+        )
+
+        # Create a tree structure
+        category_tree_items = [
+            TreeItem(category, children=[TreeItem(column) for column in columns])
+            for category, columns in categories.items()
+        ]
+
+        # Display the tree structure
+        selected_columns = st.tree(
+            items=category_tree_items,
+            label="Select Features",
+            open_all=False,
+            checkbox=True,
+        )
+
+    # If columns are selected
+    if selected_columns:
+        cols = st.columns(len(selected_columns))
+        st.write("Selected Columns:", selected_columns)
+
+        for i, column in enumerate(selected_columns):
+            with cols[i]:
+                st.metric(
+                    label=f"{column}",
+                    value=f"Unique count: {df[column].nunique()}",
+                    delta=None,
+                )
+
+    # Multiselect for filters
+    filter_columns = st.multiselect("Select Filters", source_df["Datamart Columns"])
+    st.write("Filters Selected:", filter_columns)
+
+    # Prepare config for condition_tree
+    try:
+        config = {col: {"type": "dropdown", "options": df[col].unique().tolist()} for col in filter_columns}
+    except KeyError as e:
+        st.warning("A selected column is not found in the data. Please check the column name.")
+
+    # Render condition tree
     condition_tree_query = condition_tree(
         config,
         return_type="sql",
-        always_show_buttons=True,
         placeholder="Add Filters",
+        always_show_buttons=True,
     )
+
+    # Generate the SQL query
+    sql_query = f"SELECT {', '.join(selected_columns)} FROM {selected_table}"
+    if condition_tree_query:
+        sql_query += f" WHERE {condition_tree_query} LIMIT 100000"
+
     st.write("Generated SQL Query:")
-    st.code(condition_tree_query)
+    st.code(sql_query)
+
+    return selected_columns, sql_query
