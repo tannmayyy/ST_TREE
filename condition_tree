@@ -1,53 +1,49 @@
-import pandas as pd
 import streamlit as st
-from streamlit_antd_components import condition_tree
-from streamlit_antd_components import config_from_dataframe  # Import required function
+from streamlit_condition_tree import condition_tree
 
-# Sample DataFrame (replace this with actual data from Snowflake or CSV)
-df = pd.DataFrame({
-    'DateColumn': pd.to_datetime(['2021-01-01', '2021-02-01', '2021-03-01']),
-    'Product': ['A', 'B', 'C'],
-    'Price': [10, 20, 30]
-})
+# Define your list of 826 columns (this is just an example with a few columns for clarity)
+columns = [
+    'column1', 'column2', 'column3', 'column4', 'column5', 'column6', 
+    # ... continue listing your columns here
+    'column826'
+]
 
-# Manually define columns based on 'Yes' or 'No'
-yes_columns = ['DateColumn', 'Product']  # These columns will show a dropdown
-no_columns = ['Price']  # These columns will show a text input
+# Define columns where the user can manually type values (free input fields)
+free_input_columns = ['column1', 'column3', 'column5']  # Add columns requiring manual input here
 
-# Step 1: Select columns for filtering
-filter_columns = st.multiselect("Select Filters", df.columns)
+# Create the configuration for the condition tree
+config = {
+    'fields': {}
+}
 
-# Step 2: Prepare condition tree configuration (config_data)
-config_data = []
-
-for column in filter_columns:
-    if column in yes_columns:  # If the column should show a dropdown
-        config_data.append({
+# Loop through columns to create the configuration
+for column in columns:
+    if column in free_input_columns:
+        # Add a free text input for specific columns
+        config['fields'][column] = {
             'label': column,
-            'type': 'select',  # Dropdown for these columns
-            'fieldSettings': {
-                'listValues': df[column].dropna().unique().tolist()  # Automatically fill dropdown with unique values
-            }
-        })
-    elif column in no_columns:  # If the column should show a text input
-        config_data.append({
-            'label': column,
-            'type': 'text',  # Text input for these columns
+            'type': 'text',  # Free text input
             'mainWidgetProps': {
-                'valuePlaceholder': 'Enter value'
-            }
-        })
+                'valuePlaceholder': f"Enter value for {column}",
+            },
+        }
+    else:
+        # Default input for other columns (could be basic text or another type)
+        config['fields'][column] = {
+            'label': column,
+            'type': 'text',
+            'mainWidgetProps': {
+                'valuePlaceholder': 'Enter value',
+            },
+        }
 
-# Step 3: Use config_data to generate the condition tree
-condition_tree_query = condition_tree(
-    config=config_data,  # Using config_data here
+# Generate the condition tree with the configuration
+condition_query = condition_tree(
+    config,
     return_type='sql',
-    placeholder="Add Filters",
-    always_show_buttons=True
+    placeholder='Empty tree'
 )
 
-# Step 4: Display the generated SQL query
-if condition_tree_query:
-    sql_query = f"SELECT * FROM your_table WHERE {condition_tree_query} LIMIT 1000"
-    st.write("Generated SQL Query:")
-    st.code(sql_query)
+# Display the generated SQL query
+st.write("Generated SQL Query:")
+st.write(condition_query)
