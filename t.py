@@ -1,88 +1,46 @@
 import streamlit as st
 import pandas as pd
-import snowflake.connector
-from streamlit_condition_tree import condition_tree
-from streamlit_antd_components import TreeItem
+import time
 
-def preview_filtered_data(selected_table):
-    sql_query = ""
+# Simulated SQL query execution function
+def execute_query(query):
+    # Simulate a SQL query execution and return dummy results
+    time.sleep(1)  # Simulate query execution time
+    return pd.DataFrame({"Column1": [1, 2, 3], "Column2": ["A", "B", "C"]})  # Example result
 
-    # Connect to Snowflake
-    conn = snowflake.connector.connect(
-        user=
-    )
+# User interface
+st.title("SQL Query Execution with Alert Box")
 
-    # Query Snowflake
-    sql_query = f"SELECT * FROM OBI.MISDBO.{selected_table} LIMIT 25"
-    df = pd.read_sql(sql_query, conn)
+# SQL Query input
+query = st.text_area("Enter your SQL Query:", "SELECT * FROM your_table")
 
-    # Convert columns to categorical for unique values
-    for col in df.columns:
-        df[col] = pd.Categorical(df[col])
+if st.button("Execute Query"):
+    # Execute the query
+    st.write("Executing the query...")
+    results = execute_query(query)
+    
+    # Show total rows
+    total_rows = len(results)
 
-    # Sidebar: Load CSV file
-    with st.sidebar:
-        csv_file = "C:/Users/choudhta/streamlit/Source_mapping.csv"
-        source_df = pd.read_csv(csv_file)
-
-        # Group by categories
-        categories = (
-            source_df.groupby("Category")["Datamart Columns"]
-            .apply(list)
-            .to_dict()
-        )
-
-        # Create a tree structure
-        category_tree_items = [
-            TreeItem(category, children=[TreeItem(column) for column in columns])
-            for category, columns in categories.items()
-        ]
-
-        # Display the tree structure
-        selected_columns = st.tree(
-            items=category_tree_items,
-            label="Select Features",
-            open_all=False,
-            checkbox=True,
-        )
-
-    # If columns are selected
-    if selected_columns:
-        cols = st.columns(len(selected_columns))
-        st.write("Selected Columns:", selected_columns)
-
-        for i, column in enumerate(selected_columns):
-            with cols[i]:
-                st.metric(
-                    label=f"{column}",
-                    value=f"Unique count: {df[column].nunique()}",
-                    delta=None,
-                )
-
-    # Multiselect for filters
-    filter_columns = st.multiselect("Select Filters", source_df["Datamart Columns"])
-    st.write("Filters Selected:", filter_columns)
-
-    # Prepare config for condition_tree
-    try:
-        config = {col: {"type": "dropdown", "options": df[col].unique().tolist()} for col in filter_columns}
-    except KeyError as e:
-        st.warning("A selected column is not found in the data. Please check the column name.")
-
-    # Render condition tree
-    condition_tree_query = condition_tree(
-        config,
-        return_type="sql",
-        placeholder="Add Filters",
-        always_show_buttons=True,
-    )
-
-    # Generate the SQL query
-    sql_query = f"SELECT {', '.join(selected_columns)} FROM {selected_table}"
-    if condition_tree_query:
-        sql_query += f" WHERE {condition_tree_query} LIMIT 100000"
-
-    st.write("Generated SQL Query:")
-    st.code(sql_query)
-
-    return selected_columns, sql_query
+    # Render an alert box using HTML and JavaScript
+    alert_html = f"""
+    <script>
+    var userResponse = confirm("Query executed successfully! Total rows fetched: {total_rows}. Do you want to continue?");
+    if (userResponse) {{
+        document.getElementById("continue").style.display = "block";
+    }} else {{
+        document.getElementById("stop").style.display = "block";
+    }}
+    </script>
+    <div id="continue" style="display:none;">
+        <p style="color:green; font-weight:bold;">Processing... Displaying the results below:</p>
+    </div>
+    <div id="stop" style="display:none;">
+        <p style="color:red; font-weight:bold;">Process stopped by the user.</p>
+    </div>
+    """
+    st.components.v1.html(alert_html, height=200)
+    
+    # Conditionally display results if the user chose to continue
+    if st.button("Show Results"):
+        st.dataframe(results)
