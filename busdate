@@ -1,0 +1,26 @@
+import datetime
+import streamlit as st
+
+# Date input for the business date
+business_date = st.date_input(
+    "The business date is",
+    value=datetime.datetime.now() - datetime.timedelta(days=30),
+    min_value=datetime.datetime.now() - datetime.timedelta(days=365),
+    max_value=datetime.datetime.now()
+)
+
+# Convert the selected business date to a string format compatible with SQL
+business_date_str = business_date.strftime('%Y-%m-%d')
+
+# Selected columns for the SQL query
+selected_columns = ['column1', 'column2', 'column3']  # Replace with your actual columns
+
+# SQL query incorporating the business date
+sql_query = f'''
+SELECT {", ".join(selected_columns)}
+FROM view_dt_test_1
+WHERE business_date = '{business_date_str}'
+'''
+
+# Display the query (for debugging or verification purposes)
+st.text(f"Generated SQL Query: {sql_query}")
