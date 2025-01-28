@@ -1,10 +1,13 @@
-def to_camel_case(words):
-    return ''.join(word.capitalize() if i > 0 else word.lower() for i, word in enumerate(words))
+def to_pascal_case_with_underscore(words):
+    words = words.lower()  # Convert to lowercase first
+    parts = words.split('_')  # Split the string by underscores
+    pascal_case = '_'.join(part.capitalize() for part in parts)  # Capitalize each part and join with underscores
+    return pascal_case  # Return the result with the first letter capitalized
 
 # Example usage
-words_list = ["allocation acc", "borrower id", "clearing house", "client region id"]
+words_list = ["ALLOCATIONACC", "BORROWER_ID", "TRADE_STATUS", "EVENT_TYPE"]
 
-# Convert each word in the list to camel case
-camel_case_list = [''.join(to_camel_case(word.split())) for word in words_list]
+# Convert each word in the list to Pascal Case with underscores
+pascal_case_list = [to_pascal_case_with_underscore(word) for word in words_list]
 
-print(camel_case_list)
+print(pascal_case_list)
