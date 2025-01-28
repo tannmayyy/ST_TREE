@@ -1,48 +1,34 @@
-if column in free_input_columns:
-    # Add a free text input for specific columns
-    config['fields'][column] = {
-        'label': column,
-        'type': 'text',  # Free text input
-        'mainWidgetProps': {
-            'valuePlaceholder': f"Enter value for {column}"
-        },
-    }
+import streamlit as st
+import streamlit_antd_components as sac
 
-elif column in date_columns:
-    # Add a date filter with multiple operators, including "between"
-    config['fields'][column] = {
-        'label': column,
-        'type': 'date_range',
-        'operators': ['less', 'equal', 'between', 'not_between'],
-        'mainWidgetProps': {},
-    }
+# Corrected categories dictionary with camel case
+categories = {
+    "AllocationAcc": ["AllocationAccountID"],
+    "Book": ["Book", "BookParty"],
+    "Borrower": ["BorrowerID", "BorrowerName"],
+    "Broker": ["BrokerName", "BrokerFee", "BrokerCurrency"],
+    "ClearingHouse": ["ClearingHouseName", "Clearing3D", "ClearingStatus"],
+    "Client": ["ClientName", "ClientRegionID"],
+    "CountsAndFlags": ["TradeCount", "LateFlag", "NetTradeFlag", "CancelTradeFlag", "AppendedFlagsLatest"],
+    "CounterParty": ["CounterPartyName", "CounterPartyType", "AggregationMode"],
+    "Dates": ["StartDate", "ExpiryDate", "EndDate", "OrderDateTime", "MessageTimestamp"],
+    "Economics": ["Quantity", "Price", "Notional", "Abstract"],
+    "Entity": ["EntityName"],
+    "Events": ["TradeStatus", "BusinessEvent", "EventType", "Action"],
+}
 
-    # Add logic for the "between" operator
-    if 'between' in config['fields'][column]['operators']:
-        config['fields'][column] = {
-            'label': column,
-            'type': 'date_range',
-            'operators': ['between'],
-            'mainWidgetProps': {
-                'start_date': {
-                    'type': 'date',
-                    'label': f"Start date for {column}",
-                },
-                'end_date': {
-                    'type': 'date',
-                    'label': f"End date for {column}",
-                }
-            },
-        }
-    else:
-        config['fields'][column] = {
-            'label': column,
-            'type': 'date',
-            'operators': ['less', 'equal', 'not_between'],
-            'mainWidgetProps': {
-                'date': {
-                    'type': 'date',
-                    'label': f"Select date for {column}",
-                }
-            },
-        }
+# Create category tree items
+category_tree_items = [
+    sac.TreeItem(category, children=[sac.TreeItem(column) for column in columns])
+    for category, columns in categories.items()
+]
+
+# Render the tree in the Streamlit sidebar
+selected_columns = sac.tree(
+    items=category_tree_items,
+    label="Features",
+    open_all=False,
+    checkbox=True,
+)
+
+st.write("Selected Columns:", selected_columns)
